@@ -2,13 +2,24 @@
 Pattern[] pat = new Pattern[3];
 PImage baseIm;
 
-String baseName = "photo07.jpg";
+String baseName = "photo02.jpg";
 
 void setup() {
   baseIm=loadImage(baseName);
   size(baseIm.width, baseIm.height);
   generate();
   drawOnScreen();
+
+  ArrayList<Boolean> bitsA = new ArrayList<Boolean>();
+  for (int l=0; l<3; l++) {
+    boolean[] d = pat[l].export();
+    for (int i=0; i<d.length; i++) {
+      bitsA.add(d[i]);
+      if (d[i]) print("1");
+      else print("0");
+    }
+  }
+
   save(baseName+"B.png");
 }
 
@@ -163,6 +174,23 @@ class Pattern {
     if (random(1)<0.5f) p[x][y]^=true;
     if (tP!=null) tP.evolve();
     if (fP!=null) fP.evolve();
+  }
+  boolean[] export() {
+    ArrayList<Boolean> data = new ArrayList<Boolean>();
+    for (int x2=0; x2<w; x2++) {
+      for (int y2=0; y2<h; y2++) {
+        data.add(p[x2][y2]);
+      }
+    }
+    if (tP!=null&&fP!=null) {
+      boolean[] dataT = tP.export();
+      boolean[] dataF = fP.export(); 
+      for (int i=0; i<dataT.length; i++) data.add(dataT[i]);
+      for (int i=0; i<dataF.length; i++) data.add(dataF[i]);
+    }
+    boolean[] dataR = new boolean[data.size()];
+    for (int i=0; i<dataR.length; i++) dataR[i] = data.get(i);
+    return dataR;
   }
 }
 
