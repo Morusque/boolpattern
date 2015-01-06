@@ -2,10 +2,11 @@
 Pattern[] pat = new Pattern[3];
 PImage baseIm;
 
-String baseName = "photo13.jpg";
+String baseName = "photo08.jpg";
 
+short patternSubdivisions = 3;
 float compressionAmount = 3;
-int patternSubdivisions = 3;
+int densityMode = 0;
 
 void setup() {
   baseIm=loadImage(baseName);
@@ -17,12 +18,32 @@ void setup() {
   drawOnScreen();
 
   ArrayList<Boolean> bitsA = new ArrayList<Boolean>();
+
+  for (int i=0; i<patternSubdivisions; i++) bitsA.add(true);
+  bitsA.add(false);
+
+  boolean[] oldD = new boolean[0];
   for (int l=0; l<3; l++) {
     boolean[] d = pat[l].export();
-    for (int i=0; i<d.length; i++) {
-      bitsA.add(d[i]);
-      if (d[i]) print("1");
-      else print("0");
+    boolean same=true;
+    if (l>0) {
+      if (oldD.length!=d.length) {
+        same=false;
+      } else {
+        for (int i=0; i<d.length; i++) if (d[i]!=oldD[i]) same=false;
+      }
+    } else {
+      same=false;
+    }
+    oldD = new boolean[d.length];
+    for (int i=0; i<d.length; i++) oldD[i]=d[i];
+    bitsA.add(same);
+    if (!same) {
+      for (int i=0; i<d.length; i++) {
+        bitsA.add(d[i]);
+        if (d[i]) print("1");
+        else print("0");
+      }
     }
   }
   byte[] bytes = new byte[ceil((float)bitsA.size()/8)];
@@ -109,34 +130,39 @@ class Pattern {
       }
     }
     density/=(double)base.width*base.height*0x100;
-    for (int x=0; x<w; x++) {
-      for (int y=0; y<h; y++) {
-        p[x][y]=false;
-        if (brightness(resized.get(x, y))>density*0x100) p[x][y]=true;
+    int converted=0;
+    if (densityMode==0) {
+      for (int x=0; x<w; x++) {
+        for (int y=0; y<h; y++) {
+          p[x][y]=false;
+          if (brightness(resized.get(x, y))>density*0x100) {
+            p[x][y]=true;
+            converted++;
+          }
+        }
       }
     }
-    /*
-    int converted=0;
-     while (converted<density* (w*h)) {
-     int bestX=-1;
-     int bestY=-1;
-     float bestBrightness=-1;
-     for (int x=0; x<w; x++) {
-     for (int y=0; y<h; y++) {
-     if (!p[x][y]) {
-     float thisBrightness = brightness(resized.get(x, y));
-     if (bestBrightness==-1||thisBrightness>=bestBrightness) {
-     bestBrightness=thisBrightness;
-     bestX=x;
-     bestY=y;
-     }
-     }
-     }
-     }
-     if (bestBrightness!=-1) p[bestX][bestY]=true;
-     converted++;
-     }
-     */
+    if (densityMode==1) {
+      while (converted<density* (w*h)) {
+        int bestX=-1;
+        int bestY=-1;
+        float bestBrightness=-1;
+        for (int x=0; x<w; x++) {
+          for (int y=0; y<h; y++) {
+            if (!p[x][y]) {
+              float thisBrightness = brightness(resized.get(x, y));
+              if (bestBrightness==-1||thisBrightness>=bestBrightness) {
+                bestBrightness=thisBrightness;
+                bestX=x;
+                bestY=y;
+              }
+            }
+          }
+        }
+        if (bestBrightness!=-1) p[bestX][bestY]=true;
+        converted++;
+      }
+    }
   }
   void propagateFor(float wD, float hD) {
     if (wD/(float)w>1||hD/(float)h>1) {
