@@ -2,11 +2,17 @@
 Pattern[] pat = new Pattern[3];
 PImage baseIm;
 
-String baseName = "photo02.jpg";
+String baseName = "photo13.jpg";
+
+float compressionAmount = 3;
+int patternSubdivisions = 3;
 
 void setup() {
   baseIm=loadImage(baseName);
   size(baseIm.width, baseIm.height);
+
+  frame.setResizable(true);
+
   generate();
   drawOnScreen();
 
@@ -19,11 +25,21 @@ void setup() {
       else print("0");
     }
   }
+  byte[] bytes = new byte[ceil((float)bitsA.size()/8)];
+  for (int i=0; i<bytes.length; i++) {
+    bytes[i]=0;
+    for (int j=0; j<8; j++) {
+      if (i*8+j<bitsA.size()) if (bitsA.get(i*8+j)) bytes[i]+=1<<(7-j);
+    }
+  }
+  saveBytes(baseName+".bpc", bytes);
 
   save(baseName+"B.png");
 }
 
 void draw() {
+  drawOnScreen();
+
   /*
   for (int i=0; i<3; i++) pat[i].evolve();
    drawOnScreen();
@@ -38,8 +54,8 @@ void drawOnScreen() {
     pat[i].draw(layers[i], 0, 0, width, height);
     layers[i].endDraw();
   }
-  for (int x=0; x<baseIm.width; x++) {
-    for (int y=0; y<baseIm.height; y++) {
+  for (int x=0; x<width; x++) {
+    for (int y=0; y<height; y++) {
       stroke(brightness(layers[0].get(x, y)), brightness(layers[1].get(x, y)), brightness(layers[2].get(x, y)));
       point(x, y);
     }
@@ -61,6 +77,7 @@ void generate() {
   pat[0] = new Pattern(0, rLayer);
   pat[1] = new Pattern(0, gLayer);
   pat[2] = new Pattern(0, bLayer);
+  for (int i=0; i<3; i++) pat[i].propagateFor((float)width/compressionAmount, (float)height/compressionAmount);
 }
 
 void keyPressed() {
@@ -77,8 +94,8 @@ class Pattern {
   int level;
   PImage base;
   Pattern(int level, PImage base) {
-    w=3;
-    h=3;
+    w=patternSubdivisions;
+    h=patternSubdivisions;
     p = new boolean[w][h];
     this.level=level;
     this.base=base;
@@ -121,49 +138,69 @@ class Pattern {
      }
      */
   }
+  void propagateFor(float wD, float hD) {
+    if (wD/(float)w>1||hD/(float)h>1) {
+      PVector chunkDimensions = new PVector((float)base.width/w, (float)base.height/h);
+      PImage croppedT = base.get(floor(floor((float)w/2.0f)*chunkDimensions.x), floor(floor((float)h/2.0f)*chunkDimensions.y), ceil(chunkDimensions.x), ceil(chunkDimensions.y));
+      PImage croppedF = base.get(floor(floor((float)w/2.0f)*chunkDimensions.x), floor(floor((float)h/2.0f)*chunkDimensions.y), ceil(chunkDimensions.x), ceil(chunkDimensions.y)); 
+      int lerpsDoneT=0;
+      int lerpsDoneF=0;
+      for (int x2=0; x2<w; x2++) {
+        for (int y2=0; y2<h; y2++) {
+          PImage thisCrop = base.get(floor(floor((float)x2)*chunkDimensions.x), floor(floor((float)y2)*chunkDimensions.y), ceil(chunkDimensions.x), ceil(chunkDimensions.y));
+          if (p[x2][y2]) {
+            for (int x3=0; x3<thisCrop.width; x3++) {
+              for (int y3=0; y3<thisCrop.height; y3++) {
+                croppedT.set(x3, y3, lerpColor(thisCrop.get(x3, y3), croppedT.get(x3, y3), 1.0f/(lerpsDoneT)));
+              }
+            }
+            lerpsDoneT++;
+          } else {
+            for (int x3=0; x3<thisCrop.width; x3++) {
+              for (int y3=0; y3<thisCrop.height; y3++) {
+                croppedF.set(x3, y3, lerpColor(thisCrop.get(x3, y3), croppedF.get(x3, y3), 1.0f/(lerpsDoneF)));
+              }
+            }
+            lerpsDoneF++;
+          }
+        }
+      }
+      tP = new Pattern(level+1, croppedT);
+      fP = new Pattern(level+1, croppedF);
+      if (tP.isSolid()) {
+        tP=null;
+      } else {
+        tP.propagateFor(wD/(float)w, hD/(float)h);
+      }
+      if (fP.isSolid()) {
+        fP=null;
+      } else {
+        fP.propagateFor(wD/(float)w, hD/(float)h);
+      }
+    }
+  }
+  boolean isSolid() {
+    boolean last=false;
+    for (int x=0; x<w; x++) {
+      for (int y=0; y<h; y++) {
+        if (x>0||y>0) {
+          if (p[x][y]!=last) return false;
+        }
+        last=p[x][y];
+      }
+    }
+    return true;
+  }
   void draw(PGraphics l, float xD, float yD, float wD, float hD) {
     l.noStroke();
     for (int x=0; x<w; x++) {
       for (int y=0; y<h; y++) {
-        if (wD/(float)w<=1&&hD/(float)h<=1) {
-          l.fill((float)(density*0x100));
-          /*
-          if (p[x][y]) l.fill((float)(density*0x100)+(float)(0x100-density)*0x01);
-           else l.fill((float)(density*0x100)-(float)(density)*0x01);
-           */
-          l.rect(xD, yD, wD, hD);
+        if (tP!=null&&fP!=null) {
+          if (p[x][y]) tP.draw(l, xD+wD*(float)x/w, yD+hD*(float)y/h, wD/(float)w, hD/(float)h);
+          else fP.draw(l, xD+wD*(float)x/w, yD+hD*(float)y/h, wD/(float)w, hD/(float)h);
         } else {
-          if (tP==null||fP==null) {
-            PVector chunkDimensions = new PVector((float)base.width/w, (float)base.height/h);
-            PImage croppedT = base.get(floor(floor((float)w/2.0f)*chunkDimensions.x), floor(floor((float)h/2.0f)*chunkDimensions.y), ceil(chunkDimensions.x), ceil(chunkDimensions.y));
-            PImage croppedF = base.get(floor(floor((float)w/2.0f)*chunkDimensions.x), floor(floor((float)h/2.0f)*chunkDimensions.y), ceil(chunkDimensions.x), ceil(chunkDimensions.y)); 
-            int lerpsDoneT=0;
-            int lerpsDoneF=0;
-            for (int x2=0; x2<w; x2++) {
-              for (int y2=0; y2<h; y2++) {
-                PImage thisCrop = base.get(floor(floor((float)x2)*chunkDimensions.x), floor(floor((float)y2)*chunkDimensions.y), ceil(chunkDimensions.x), ceil(chunkDimensions.y));
-                if (p[x2][y2]) {
-                  for (int x3=0; x3<thisCrop.width; x3++) {
-                    for (int y3=0; y3<thisCrop.height; y3++) {
-                      croppedT.set(x3, y3, lerpColor(thisCrop.get(x3, y3), croppedT.get(x3, y3), 1.0f/(lerpsDoneT)));
-                    }
-                  }
-                  lerpsDoneT++;
-                } else {
-                  for (int x3=0; x3<thisCrop.width; x3++) {
-                    for (int y3=0; y3<thisCrop.height; y3++) {
-                      croppedF.set(x3, y3, lerpColor(thisCrop.get(x3, y3), croppedF.get(x3, y3), 1.0f/(lerpsDoneF)));
-                    }
-                  }
-                  lerpsDoneF++;
-                }
-              }
-            }
-            tP = new Pattern(level+1, croppedT);
-            fP = new Pattern(level+1, croppedF);
-          }
-          if (p[x][y]) tP.draw(l, xD+wD*x/w, yD+hD*y/h, wD/w, hD/h);
-          else fP.draw(l, xD+wD*x/w, yD+hD*y/h, wD/w, hD/h);
+          l.fill((float)(density*0x100));
+          l.rect(xD, yD, wD, hD);
         }
       }
     }
@@ -171,9 +208,12 @@ class Pattern {
   void evolve() {
     int x=floor(random(w));
     int y=floor(random(h));
-    if (random(1)<0.5f) p[x][y]^=true;
-    if (tP!=null) tP.evolve();
-    if (fP!=null) fP.evolve();
+    if (random(1)<0.2f) {
+      p[x][y]^=true;
+    } else {
+      if (tP!=null) tP.evolve();
+      if (fP!=null) fP.evolve();
+    }
   }
   boolean[] export() {
     ArrayList<Boolean> data = new ArrayList<Boolean>();
@@ -182,11 +222,19 @@ class Pattern {
         data.add(p[x2][y2]);
       }
     }
-    if (tP!=null&&fP!=null) {
+    if (tP!=null) {
       boolean[] dataT = tP.export();
-      boolean[] dataF = fP.export(); 
+      data.add(true);
       for (int i=0; i<dataT.length; i++) data.add(dataT[i]);
+    } else {
+      data.add(false);
+    }
+    if (fP!=null) {
+      data.add(true);
+      boolean[] dataF = fP.export();
       for (int i=0; i<dataF.length; i++) data.add(dataF[i]);
+    } else {
+      data.add(false);
     }
     boolean[] dataR = new boolean[data.size()];
     for (int i=0; i<dataR.length; i++) dataR[i] = data.get(i);
