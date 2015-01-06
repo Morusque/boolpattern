@@ -2,9 +2,9 @@
 Pattern[] pat = new Pattern[3];
 PImage baseIm;
 
-String baseName = "photo08.jpg";
+String baseName = "photo14.jpg";
 
-short patternSubdivisions = 3;
+short patternSubdivisions = 4;// TODO why is it almost solid with 2 ?
 float compressionAmount = 3;
 int densityMode = 0;
 
@@ -117,6 +117,8 @@ class Pattern {
   Pattern(int level, PImage base) {
     w=patternSubdivisions;
     h=patternSubdivisions;
+    // if (base.width>base.height) h--;
+    // else w--;
     p = new boolean[w][h];
     this.level=level;
     this.base=base;
