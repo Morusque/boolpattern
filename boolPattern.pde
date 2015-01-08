@@ -2,11 +2,13 @@
 Pattern[] pat = new Pattern[3];
 PImage baseIm;
 
-String baseName = "photo14.jpg";
-
-short patternSubdivisions = 4;// TODO why is it almost solid with 2 ?
+// PARAMETERS :
+String baseName = "photo08.jpg";
+short patternSubdivisions = 4;
 float compressionAmount = 3;
 int densityMode = 0;
+boolean stopIfSolid=true;
+boolean favorHighestDimension=true;
 
 void setup() {
   baseIm=loadImage(baseName);
@@ -22,7 +24,7 @@ void setup() {
   for (int i=0; i<patternSubdivisions; i++) bitsA.add(true);
   bitsA.add(false);
 
-  boolean[] oldD = new boolean[0];
+  boolean[] oldD = new boolean[0];// TODO if "favorHighestDimension" is on, add informations about it
   for (int l=0; l<3; l++) {
     boolean[] d = pat[l].export();
     boolean same=true;
@@ -117,8 +119,10 @@ class Pattern {
   Pattern(int level, PImage base) {
     w=patternSubdivisions;
     h=patternSubdivisions;
-    // if (base.width>base.height) h--;
-    // else w--;
+    if (favorHighestDimension) {
+      if (base.width>base.height) h--;
+      else w--;
+    }
     p = new boolean[w][h];
     this.level=level;
     this.base=base;
@@ -177,30 +181,30 @@ class Pattern {
         for (int y2=0; y2<h; y2++) {
           PImage thisCrop = base.get(floor(floor((float)x2)*chunkDimensions.x), floor(floor((float)y2)*chunkDimensions.y), ceil(chunkDimensions.x), ceil(chunkDimensions.y));
           if (p[x2][y2]) {
+            lerpsDoneT++;
             for (int x3=0; x3<thisCrop.width; x3++) {
               for (int y3=0; y3<thisCrop.height; y3++) {
                 croppedT.set(x3, y3, lerpColor(thisCrop.get(x3, y3), croppedT.get(x3, y3), 1.0f/(lerpsDoneT)));
               }
             }
-            lerpsDoneT++;
           } else {
+            lerpsDoneF++;
             for (int x3=0; x3<thisCrop.width; x3++) {
               for (int y3=0; y3<thisCrop.height; y3++) {
                 croppedF.set(x3, y3, lerpColor(thisCrop.get(x3, y3), croppedF.get(x3, y3), 1.0f/(lerpsDoneF)));
               }
             }
-            lerpsDoneF++;
           }
         }
       }
       tP = new Pattern(level+1, croppedT);
       fP = new Pattern(level+1, croppedF);
-      if (tP.isSolid()) {
+      if (tP.isSolid()&&stopIfSolid) {
         tP=null;
       } else {
         tP.propagateFor(wD/(float)w, hD/(float)h);
       }
-      if (fP.isSolid()) {
+      if (fP.isSolid()&&stopIfSolid) {
         fP=null;
       } else {
         fP.propagateFor(wD/(float)w, hD/(float)h);
@@ -269,4 +273,3 @@ class Pattern {
     return dataR;
   }
 }
-
