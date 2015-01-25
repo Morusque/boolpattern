@@ -3,14 +3,44 @@ Pattern[] pat = new Pattern[3];
 PImage baseIm;
 
 // PARAMETERS :
-String baseName = "photo08.jpg";
-short patternSubdivisions = 4;
+boolean compress=false;
+String baseName = "photo23.jpg.bpc";// i.e. photo23.jpg.bpc or photo23.jpg
+short patternSubdivisions = 3;
 float compressionAmount = 3;
 int densityMode = 0;
 boolean stopIfSolid=true;
-boolean favorHighestDimension=true;
+boolean favorHighestDimension=false;
 
 void setup() {
+  frame.setResizable(true);
+  if (compress) compress();
+  else uncompress();
+}
+
+void draw() {
+  drawOnScreen();
+}
+
+void uncompress() {
+  byte[] bInput = loadBytes(baseName);
+  ArrayList<Boolean> bitsA = new ArrayList<Boolean>();
+  for (int i=0; i<bInput.length; i++) {
+    for (int j=0; j<8; j++) bitsA.add((((bInput[i]>>(7-j))&0x01)==0x01));
+  }
+  // for (int i=0; i<bitsA.size (); i++) print(bitsA.get(i)?"1":"0"); 
+  patternSubdivisions=0;
+  while (bitsA.remove (0)) patternSubdivisions++;
+  for (int currentLayer=0; currentLayer<3; currentLayer++) {
+    pat[currentLayer]=new Pattern(0);
+    if (!bitsA.remove(0)) {
+      pat[currentLayer].feed(bitsA);
+    } else {
+      pat[currentLayer]=pat[currentLayer-1];
+    }
+  }
+}
+
+void compress() {
   baseIm=loadImage(baseName);
   size(baseIm.width, baseIm.height);
 
@@ -43,10 +73,12 @@ void setup() {
     if (!same) {
       for (int i=0; i<d.length; i++) {
         bitsA.add(d[i]);
-        if (d[i]) print("1");
-        else print("0");
       }
     }
+  }
+  for (int i=0; i<bitsA.size (); i++) {
+    if (bitsA.get(i)) print("1");
+    else print("0");
   }
   byte[] bytes = new byte[ceil((float)bitsA.size()/8)];
   for (int i=0; i<bytes.length; i++) {
@@ -54,19 +86,10 @@ void setup() {
     for (int j=0; j<8; j++) {
       if (i*8+j<bitsA.size()) if (bitsA.get(i*8+j)) bytes[i]+=1<<(7-j);
     }
-  }
+  }  
   saveBytes(baseName+".bpc", bytes);
 
   save(baseName+"B.png");
-}
-
-void draw() {
-  drawOnScreen();
-
-  /*
-  for (int i=0; i<3; i++) pat[i].evolve();
-   drawOnScreen();
-   */
 }
 
 void drawOnScreen() {
@@ -116,6 +139,12 @@ class Pattern {
   Pattern fP;
   int level;
   PImage base;
+  Pattern(int level) {
+    w=patternSubdivisions;
+    h=patternSubdivisions;
+    p = new boolean[w][h];
+    this.level=level;
+  }  
   Pattern(int level, PImage base) {
     w=patternSubdivisions;
     h=patternSubdivisions;
@@ -272,4 +301,23 @@ class Pattern {
     for (int i=0; i<dataR.length; i++) dataR[i] = data.get(i);
     return dataR;
   }
+  void feed(ArrayList<Boolean> bits) {
+    density=0;
+    for (int x2=0; x2<w; x2++) {
+      for (int y2=0; y2<h; y2++) {
+        p[x2][y2] = bits.remove(0);
+        density+=p[x2][y2]?1:0;
+      }
+    }
+    density/=w*h;
+    if (bits.remove(0)) {
+      tP=new Pattern(level+1);
+      tP.feed(bits);
+    }
+    if (bits.remove(0)) {
+      fP=new Pattern(level+1);
+      fP.feed(bits);
+    }
+  }
 }
+
