@@ -3,13 +3,13 @@ Pattern[] pat = new Pattern[3];
 PImage baseIm;
 
 // PARAMETERS :
-boolean compress=false;
-String baseName = "photo23.jpg.bpc";// i.e. photo23.jpg.bpc or photo23.jpg
-short patternSubdivisions = 3;
-float compressionAmount = 3;
-int densityMode = 0;
-boolean stopIfSolid=true;
-boolean favorHighestDimension=false;
+boolean compress=false;// true to compress (png->bpc), false to uncompress (bpc->png)
+String baseName = "photo23.jpg.bpc";// i.e. photo.bpc or photo.jpg
+short patternSubdivisions = 3;// number of raws/columns in a pattern
+float compressionAmount = 3;// prior downscaling
+int densityMode = 0;// 0 = uses average value as a threshold, 1 = repartition according to density
+boolean stopIfSolid=true;// stop subdividing if a pattern is solid
+boolean favorHighestDimension=false;// reduce one of the dimensions (export does not work yet but preview does)
 
 void setup() {
   frame.setResizable(true);
@@ -38,6 +38,8 @@ void uncompress() {
       pat[currentLayer]=pat[currentLayer-1];
     }
   }
+  drawOnScreen();
+  save(baseName+"B.png");
 }
 
 void compress() {
