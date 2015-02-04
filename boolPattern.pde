@@ -3,13 +3,13 @@ Pattern[] pat = new Pattern[3];
 PImage baseIm;
 
 // PARAMETERS :
-boolean compress=false;// true to compress (png->bpc), false to uncompress (bpc->png)
-String baseName = "photo23.jpg.bpc";// i.e. photo.bpc or photo.jpg
+boolean compress = false;// true to compress (png->bpc), false to uncompress (bpc->png)
+String baseName = "photo03.jpg.bpc";// i.e. photo.bpc or photo.jpg
 short patternSubdivisions = 3;// number of raws/columns in a pattern
 float compressionAmount = 3;// prior downscaling
-int densityMode = 0;// 0 = uses average value as a threshold, 1 = repartition according to density
+int densityMode = 1;// 0 = uses average value as a threshold, 1 = repartition according to density (export does not work in mode 0 yet but preview does)
 boolean stopIfSolid=true;// stop subdividing if a pattern is solid
-boolean favorHighestDimension=false;// reduce one of the dimensions (export does not work yet but preview does)
+boolean favorHighestDimension=false;// reduce one of the dimensions 
 
 void setup() {
   frame.setResizable(true);
@@ -30,6 +30,7 @@ void uncompress() {
   // for (int i=0; i<bitsA.size (); i++) print(bitsA.get(i)?"1":"0"); 
   patternSubdivisions=0;
   while (bitsA.remove (0)) patternSubdivisions++;
+  favorHighestDimension = bitsA.remove(0);
   for (int currentLayer=0; currentLayer<3; currentLayer++) {
     pat[currentLayer]=new Pattern(0);
     if (!bitsA.remove(0)) {
@@ -55,8 +56,9 @@ void compress() {
 
   for (int i=0; i<patternSubdivisions; i++) bitsA.add(true);
   bitsA.add(false);
+  bitsA.add(favorHighestDimension);
 
-  boolean[] oldD = new boolean[0];// TODO if "favorHighestDimension" is on, add informations about it
+  boolean[] oldD = new boolean[0];
   for (int l=0; l<3; l++) {
     boolean[] d = pat[l].export();
     boolean same=true;
@@ -280,6 +282,10 @@ class Pattern {
   }
   boolean[] export() {
     ArrayList<Boolean> data = new ArrayList<Boolean>();
+    if (favorHighestDimension) {
+      if (w>h) data.add(true);
+      else data.add(false);
+    }
     for (int x2=0; x2<w; x2++) {
       for (int y2=0; y2<h; y2++) {
         data.add(p[x2][y2]);
@@ -305,6 +311,10 @@ class Pattern {
   }
   void feed(ArrayList<Boolean> bits) {
     density=0;
+    if (favorHighestDimension) {
+      if (bits.remove(0)) h--;
+      else w--;
+    }
     for (int x2=0; x2<w; x2++) {
       for (int y2=0; y2<h; y2++) {
         p[x2][y2] = bits.remove(0);
@@ -322,4 +332,3 @@ class Pattern {
     }
   }
 }
-

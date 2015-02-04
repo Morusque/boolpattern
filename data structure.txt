@@ -1,8 +1,9 @@
-<for each subdivision> 1 </for each subdivision>
-0
+<for each subdivision>1</for each subdivision>0
+<if favor highestdimension>1<\if favor highestdimension>0</if favor highestdimension>
 <for each layer>
 <if it is a new pattern>1
 <pattern>
+<if favor highestdimension><if width higher than height>1<\if width higher than height>1</if width higher than height><\if favor highestdimension></if favor highestdimension>
 <for each value (up->down then left->right)>
 <if value is true>1<\if value is true>0</if value is true>
 </for each value>
